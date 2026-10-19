@@ -21,7 +21,11 @@
        background: linear-gradient(90deg, var(--cy), var(--pk)); -webkit-background-clip: text; background-clip: text; color: transparent;
        filter: drop-shadow(0 0 14px rgba(77,226,255,.5)); }
   .sub { margin: 8px 0 18px; color: #9fb0e8; font-size: clamp(12px, 1.9vh, 15px); line-height: 1.5; }
-  .topics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 380px; }
+  .topics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 380px; overflow-y: auto; min-height: 0; flex: 1 1 auto; padding: 4px 4px 10px; scrollbar-width: thin; scrollbar-color: #34478f transparent; }
+  #search { width: 100%; max-width: 380px; margin-bottom: 10px; padding: 10px 14px; border-radius: 22px; border: 1px solid #2a3a7a; background: #0c1230; color: #fff; font-size: 14px; outline: none; }
+  #search:focus { border-color: var(--cy); }
+  #menu { justify-content: flex-start; padding-top: 28px; }
+  #menu .help { margin-top: 10px; }
   .topic { cursor: pointer; padding: 12px 8px; border-radius: 14px; border: 1px solid #2a3a7a;
            background: linear-gradient(160deg, #16204a, #0c1230); color: #fff; font-size: 15px;
            transition: transform .15s, box-shadow .15s, border-color .15s; }
@@ -48,6 +52,7 @@
   <div id="menu" class="overlay">
     <h1>WORD TANK</h1>
     <p class="sub">Bắn hạ các từ vựng đang rơi bằng cách gõ<br>các chữ cái còn thiếu – vừa chơi vừa nhớ từ!</p>
+    <input id="search" type="search" placeholder="Tìm chủ đề..." autocomplete="off">
     <div class="topics" id="topics"></div>
     <div class="help">
       Gõ chữ cái còn thiếu theo thứ tự (<b>o _ _</b> → <kbd>L</kbd> <kbd>D</kbd>)<br>
@@ -69,6 +74,11 @@
   </div>
 </div>
 
+<script src="data/pack-a.js"></script>
+<script src="data/pack-b.js"></script>
+<script src="data/pack-c.js"></script>
+<script src="data/pack-d.js"></script>
+<script src="data/pack-e.js"></script>
 <script>
 /* =====================================================================
    DỮ LIỆU: thêm chủ đề mới chỉ cần thêm 1 object vào TOPICS.
@@ -108,6 +118,10 @@ const TOPICS = [
     ["mountain","ngọn núi"],["volcano","núi lửa"],["thunder","sấm"],["rainbow","cầu vồng"],["island","hòn đảo"],["desert","sa mạc"],["waterfall","thác nước"],
     ["lightning","tia chớp"],["earthquake","động đất"],["environment","môi trường"],["atmosphere","bầu khí quyển"]] },
 ];
+
+// gộp các gói chủ đề từ thư mục data/ (mỗi gói là 1 file pack-*.js)
+if (window.TOPIC_PACKS) TOPICS.push(...window.TOPIC_PACKS);
+TOPICS.forEach(t => { t.words = t.words.filter(w => /^[a-z]{2,14}$/.test(w[0])); });
 
 /* =====================  CẤU HÌNH & BIẾN TOÀN CỤC  ===================== */
 const W = 480, H = 800, GROUND = 690, TANK_X = W / 2, TANK_Y = 742;
@@ -554,8 +568,15 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('blur', () => setPause(true));
 
-$('topics').innerHTML = TOPICS.map((t, i) =>
-  `<button class="topic" data-i="${i}"><span class="ic">${t.icon}</span>${t.name}<small>${t.vi} · ${t.words.length} từ</small></button>`).join('');
+function renderTopics(q = '') {
+  q = q.trim().toLowerCase();
+  $('topics').innerHTML = TOPICS.map((t, i) => ({ t, i })).filter(({ t }) => !q || (t.name + ' ' + t.vi).toLowerCase().includes(q)).map(({ t, i }) =>
+    `<button class="topic" data-i="${i}"><span class="ic">${t.icon}</span>${t.name}<small>${t.vi} · ${t.words.length} từ</small></button>`).join('')
+    || '<p class="sub" style="grid-column:1/-1">Không tìm thấy chủ đề.</p>';
+}
+renderTopics();
+$('search').addEventListener('input', e => renderTopics(e.target.value));
+$('search').addEventListener('keydown', e => e.stopPropagation());
 $('topics').addEventListener('click', e => { const b = e.target.closest('.topic'); if (b) start(TOPICS[b.dataset.i]); });
 $('again').onclick = () => { $('over').classList.add('hidden'); $('menu').classList.remove('hidden'); state = 'menu'; };
 $('resume').onclick = () => setPause(false);
